@@ -20,7 +20,7 @@ export default function App() {
 
   // Raum erstellen
   const createRoom = async () => {
-    const response = await fetch('http://DEINE_OEFFENTLICHE_IP:3000/createRoom', {
+    const response = await fetch('http://178.114.121.23:3000/createRoom', {
       method: 'POST',
     });
     const data = await response.json();
@@ -32,7 +32,7 @@ export default function App() {
   // Raum beitreten
   const joinRoom = async () => {
     if (!roomCode || !expoPushToken) return;
-    const response = await fetch('http://DEINE_OEFFENTLICHE_IP:3000/joinRoom', {
+    const response = await fetch('http://178.114.121.23:3000/joinRoom', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomCode, expoPushToken }),
@@ -51,7 +51,7 @@ export default function App() {
       Alert.alert('Fehler', 'Du musst einem Raum beitreten.');
       return;
     }
-    const response = await fetch('http://DEINE_OEFFENTLICHE_IP:3000/sendEmergency', {
+    const response = await fetch('http://178.114.121.23:3000/sendEmergency', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomCode, message }),
