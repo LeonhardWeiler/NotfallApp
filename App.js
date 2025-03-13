@@ -1,86 +1,54 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Button, Alert, TextInput } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
-  const [expoPushToken, setExpoPushToken] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [message, setMessage] = useState('Notfall! Bitte melde dich sofort!');
-  const [roomCreated, setRoomCreated] = useState(false);
+  const [inputCode, setInputCode] = useState('');
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
-    async function registerForPushNotifications() {
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      console.log('Expo Push Token:', token);
-      setExpoPushToken(token);
-    }
+    const fetchRoomCode = async () => {
+      try {
+        const storedCode = await AsyncStorage.getItem('roomCode');
+        if (storedCode) {
+          setRoomCode(storedCode);
+        } else {
+          const response = await fetch('http://178.114.121.23:3000/createRoom');
+          const data = await response.json();
+          if (data.code) {
+            setRoomCode(data.code);
+            await AsyncStorage.setItem('roomCode', data.code);
+          }
+        }
+      } catch (error) {
+        Alert.alert('Fehler', 'Konnte Raum nicht erstellen');
+      }
+    };
 
-    registerForPushNotifications();
+    fetchRoomCode();
   }, []);
 
-  // Raum erstellen
-  const createRoom = async () => {
-    const response = await fetch('http://178.114.121.23:3000/createRoom', {
-      method: 'POST',
-    });
-    const data = await response.json();
-    setRoomCode(data.roomCode);
-    setRoomCreated(true);
-    Alert.alert('Raum erstellt', `Raumcode: ${data.roomCode}`);
-  };
-
-  // Raum beitreten
-  const joinRoom = async () => {
-    if (!roomCode || !expoPushToken) return;
-    const response = await fetch('http://178.114.121.23:3000/joinRoom', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomCode, expoPushToken }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      Alert.alert('Raum beigetreten', `Du bist nun im Raum ${roomCode}`);
+  const joinRoom = () => {
+    if (inputCode.length === 5) {
+      setHasJoined(true);
+      Alert.alert('Erfolg', `Dem Raum ${inputCode} beigetreten!`);
     } else {
-      Alert.alert('Fehler', 'Raum nicht gefunden');
-    }
-  };
-
-  // Notfallbenachrichtigung senden
-  const sendEmergencyNotification = async () => {
-    if (!roomCode) {
-      Alert.alert('Fehler', 'Du musst einem Raum beitreten.');
-      return;
-    }
-    const response = await fetch('http://178.114.121.23:3000/sendEmergency', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomCode, message }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      Alert.alert('Notruf gesendet', 'Alle im Raum wurden benachrichtigt');
-    } else {
-      Alert.alert('Fehler', 'Nachricht konnte nicht gesendet werden');
+      Alert.alert('Fehler', 'Bitte einen gültigen 5-stelligen Code eingeben');
     }
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>{roomCreated ? `Raumcode: ${roomCode}` : 'Erstelle einen Raum'}</Text>
-      {!roomCreated ? (
-        <Button title="Raum erstellen" onPress={createRoom} />
-      ) : (
-        <>
-          <TextInput
-            style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 20 }}
-            placeholder="Raumcode eingeben"
-            onChangeText={setRoomCode}
-            value={roomCode}
-          />
-          <Button title="Raum beitreten" onPress={joinRoom} />
-        </>
-      )}
-      <Button title="Notruf senden" onPress={sendEmergencyNotification} />
+    <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Raum Code: {roomCode}</Text>
+      <TextInput
+        placeholder='Raum Code eingeben'
+        value={inputCode}
+        onChangeText={setInputCode}
+        maxLength={5}
+        style={{ borderWidth: 1, padding: 10, marginVertical: 20, width: 200, textAlign: 'center' }}
+      />
+      <Button title='Raum beitreten' onPress={joinRoom} disabled={hasJoined} />
     </View>
   );
 }
