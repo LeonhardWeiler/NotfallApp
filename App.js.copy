@@ -1,0 +1,97 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export default function App() {
+  const [roomCode, setRoomCode] = useState('');
+  const [inputCode, setInputCode] = useState('');
+  const [hasJoined, setHasJoined] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRoomCode = async () => {
+      try {
+        const storedCode = await AsyncStorage.getItem('roomCode');
+        if (storedCode) {
+          setRoomCode(storedCode);
+        } else {
+          const response = await fetch('http://178.114.121.23:3000/createRoom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+
+          const textResponse = await response.text();
+          console.log('Server Response:', textResponse);
+          const data = JSON.parse(textResponse);
+
+          if (data.roomCode) {
+            setRoomCode(data.roomCode);
+            await AsyncStorage.setItem('roomCode', data.roomCode);
+          } else {
+            throw new Error('Ungültige Antwort vom Server');
+          }
+        }
+      } catch (error) {
+        Alert.alert('Fehler', 'Konnte Raum nicht erstellen: ' + (error.message || 'Unbekannter Fehler'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoomCode();
+  }, []);
+
+  const joinRoom = useCallback(() => {
+    const trimmedCode = inputCode.trim();
+    if (/^\w{5}$/.test(trimmedCode)) {
+      setHasJoined(true);
+      Alert.alert('Erfolg', `Dem Raum ${trimmedCode} beigetreten!`);
+    } else {
+      Alert.alert('Fehler', 'Bitte einen gültigen 5-stelligen Code eingeben');
+    }
+  }, [inputCode]);
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+          <>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20 }}>
+              Raum Code: {roomCode || 'Nicht verfügbar'}
+            </Text>
+            <TextInput
+              placeholder="Raum Code eingeben"
+              value={inputCode}
+              onChangeText={setInputCode}
+              maxLength={5}
+              style={{
+                borderWidth: 1,
+                padding: 10,
+                width: 200,
+                textAlign: 'center',
+                marginBottom: 20,
+                borderRadius: 5,
+              }}
+            />
+            <TouchableOpacity
+              onPress={joinRoom}
+              disabled={hasJoined}
+              style={{
+                backgroundColor: hasJoined ? 'gray' : 'blue',
+                padding: 12,
+                borderRadius: 5,
+                opacity: hasJoined ? 0.5 : 1,
+                alignItems: 'center',
+                width: 200,
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 16 }}>Raum beitreten</Text>
+            </TouchableOpacity>
+          </>
+        )}
+    </View>
+  );
+}
+
