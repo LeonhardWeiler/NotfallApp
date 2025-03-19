@@ -29,7 +29,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.leonhardw.NotfallApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,9 +39,6 @@
       "eas": {
         "projectId": "2d04d337-a9bc-4e29-9efd-051345159e87"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/2d04d337-a9bc-4e29-9efd-051345159e87"
