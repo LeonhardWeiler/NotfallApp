@@ -1,5 +1,6 @@
 {
   "expo": {
+    "runtimeVersion": "sdkVersion",
     "name": "NotfallApp",
     "slug": "NotfallApp",
     "version": "1.0.0",
@@ -12,7 +13,6 @@
       "android",
       "web"
     ],
-    "projectId": "notfallapp",
     "notification": {
       "icon": "./assets/splash-icon.png",
       "color": "#000000"
@@ -31,7 +31,9 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.leonhardw.NotfallApp",
-      "permissions": ["NOTIFICATIONS"]
+      "permissions": [
+        "NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,6 +45,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/2d04d337-a9bc-4e29-9efd-051345159e87"
-    }
+    },
+    "owner": "leonhardw"
   }
 }
