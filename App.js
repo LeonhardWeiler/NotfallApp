@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, TextInput, TouchableOpacity, FlatList, Alert, Platform, } from "react-native";
+import { View, Text, Button, TextInput, TouchableOpacity, FlatList, Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import Dialog from "react-native-dialog";
@@ -16,7 +16,7 @@ const App = () => {
   const [roomInput, setRoomInput] = useState("");
   const [ws, setWs] = useState(null);
   const [isDialogVisible, setDialogVisible] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [newName, setNewName] = useState(name);
 
   // 📢 Push-Benachrichtigungen konfigurieren
   useEffect(() => {
@@ -42,17 +42,14 @@ const App = () => {
       const storedName = await AsyncStorage.getItem("name");
       const storedRoom = await AsyncStorage.getItem("room");
 
-      if (storedName) {
-        setName(storedName);
-      } else {
-        const randomName = generateRandomName();
-        setName(randomName);
-        await AsyncStorage.setItem("name", randomName);
-      }
+      let finalName = storedName || generateRandomName();
+
+      setName(finalName);
+      setNewName(finalName);
+      await AsyncStorage.setItem("name", finalName);
 
       if (storedRoom) {
-        setRoom(storedRoom);
-        connectWebSocket(storedRoom);
+        connectWebSocket(storedRoom, finalName, false);
       }
     };
 
@@ -60,31 +57,33 @@ const App = () => {
   }, []);
 
   // 🔌 WebSocket-Verbindung aufbauen
-  const connectWebSocket = (roomCode) => {
+  const connectWebSocket = (roomCode, userName, create) => {
     const socket = new WebSocket("ws://178.114.126.100:3000");
 
     socket.onopen = () => {
-      const joinMessage = JSON.stringify({ type: "join", room: roomCode, name });
-      console.log("📨 Sende WebSocket-Nachricht:", joinMessage); // Debugging
-      socket.send(joinMessage);
+      if (create) {
+        console.log(`🚀 WebSocket verbunden und erstelle Raum: ${roomCode}`);
+        socket.send(JSON.stringify({ type: "create", room: roomCode, name: userName }));
+        return;
+      }
+      console.log(`📡 WebSocket verbunden mit Raum: ${roomCode}`);
+      socket.send(JSON.stringify({ type: "join", room: roomCode, name: userName }));
     };
 
-    socket.onerror = (error) => {
-      console.error("❌ WebSocket-Fehler:", error);
+    socket.onerror = async (error) => {
+      console.log("❌ WebSocket-Fehler:", error);
       Alert.alert("Verbindungsfehler", "Der Server ist nicht erreichbar!");
+      setRoom(null);
+      await AsyncStorage.removeItem("room");
     };
 
-    socket.onclose = () => {
-      console.log("❌ Verbindung getrennt!");
-      Alert.alert("Verbindung getrennt", "Die Verbindung zum Server wurde unterbrochen.");
-    };
-
-    socket.onmessage = (event) => {
+    socket.onmessage = async (event) => {
       const data = JSON.parse(event.data);
 
       if (data.type === "error") {
         Alert.alert("Fehler", data.message);
-        setRoom(null); // ❌ Raum nicht setzen, wenn Fehler kommt!
+        setRoom(null);
+        await AsyncStorage.removeItem("room");
         return;
       }
 
@@ -92,8 +91,18 @@ const App = () => {
         setMembers(data.members);
       }
 
+      if (data.type === "created") {
+        console.log(`🏠 Raum erfolgreich erstellt: ${data.room}`);
+        setWs(socket);
+        setRoom(roomCode);
+        await AsyncStorage.setItem("room", roomCode);
+      }
+
       if (data.type === "joined") {
         console.log("✅ Erfolgreich beigetreten!");
+        setWs(socket);
+        setRoom(roomCode);
+        await AsyncStorage.setItem("room", roomCode);
       }
 
       if (data.type === "alert") {
@@ -109,18 +118,15 @@ const App = () => {
       }
     };
 
-    setWs(socket);
+    socket.onclose = () => {
+      console.log("❌ Verbindung getrennt!");
+    };
   };
 
   // 🏠 Raum erstellen
-  const createRoom = async () => {
+  const createRoom = () => {
     const roomCode = Math.random().toString(36).slice(2, 8).toLowerCase();
-    await AsyncStorage.setItem("room", roomCode);
-    setRoom(roomCode);
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ "type": "create", "room": roomCode, "name": name }));
-    }
+    connectWebSocket(roomCode, name, true);
   };
 
   // 🔗 Raum beitreten
@@ -130,11 +136,7 @@ const App = () => {
       return;
     }
 
-    console.log("🔍 Beitreten mit Raumcode:", roomInput); // Debugging
-
-    setRoom(roomInput);
-    AsyncStorage.setItem("room", roomInput);
-    connectWebSocket(roomInput);
+    connectWebSocket(roomInput, name, false);
   };
 
   // 🚪 Raum verlassen
@@ -153,7 +155,7 @@ const App = () => {
       return;
     }
 
-    ws.send(JSON.stringify({ type: "emergency", room }));
+    ws.send(JSON.stringify({ type: "emergency", room, name }));
   };
 
   // ✏️ Name ändern
@@ -176,7 +178,7 @@ const App = () => {
 
       <Dialog.Container visible={isDialogVisible}>
         <Dialog.Title>Name ändern</Dialog.Title>
-        <Dialog.Input onChangeText={setNewName} value={newName} />
+        <Dialog.Input style={{ color:"black" }} onChangeText={setNewName} value={newName} />
         <Dialog.Button label="Abbrechen" onPress={() => setDialogVisible(false)} />
         <Dialog.Button label="Speichern" onPress={saveNewName} />
       </Dialog.Container>
@@ -209,7 +211,6 @@ const App = () => {
             {/* Raumcode eingeben */}
             <TextInput
               placeholder="Raumcode eingeben"
-              value={roomInput}
               onChangeText={setRoomInput}
               style={{
                 borderBottomWidth: 1,
