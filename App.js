@@ -18,16 +18,16 @@ const App = () => {
   // 📢 Push-Benachrichtigungen konfigurieren
   useEffect(() => {
     const loadStorage = async () => {
-      const storedName = await AsyncStorage.getItem("name");
       const storedRoom = await AsyncStorage.getItem("room");
+      const storedName = await AsyncStorage.getItem("name");
+      setRoom(storedRoom);
+
+      (storedName && storedRoom) && connectWebSocket(storedRoom, storedName, false);
 
       let finalName = storedName || generateRandomName();
-
       await AsyncStorage.setItem("name", finalName);
       setName(finalName);
-      setNewName(finalName);
-
-      storedRoom && connectWebSocket(storedRoom, finalName, false);
+      setNewName(finalName)
     };
 
     loadStorage();
@@ -63,16 +63,16 @@ const App = () => {
       if (data.type === "alert") Alert.alert("Notfall!", data.message);
 
       if (data.type === "created") {
-        await AsyncStorage.setItem("room", roomCode);
-        setWs(socket);
         setRoom(roomCode);
+        setWs(socket);
+        await AsyncStorage.setItem("room", roomCode);
         console.log(`🏠 Raum erfolgreich erstellt: ${data.room}`);
       }
 
       if (data.type === "joined") {
-        await AsyncStorage.setItem("room", roomCode);
-        setWs(socket);
         setRoom(roomCode);
+        setWs(socket);
+        await AsyncStorage.setItem("room", roomCode);
         console.log("✅ Erfolgreich beigetreten!");
       }
 
@@ -86,7 +86,7 @@ const App = () => {
 
   // 🏠 Raum erstellen
   const createRoom = () => {
-    const roomCode = Math.floor(10000 + Math.random() * 90000);
+    const roomCode = Math.floor(10000 + Math.random() * 90000).toString();
     connectWebSocket(roomCode, name, true);
   };
 
@@ -123,68 +123,69 @@ const App = () => {
 
   // 🔄 Neuen Namen speichern
   const saveNewName = async () => {
+    if (ws) {
+      ws.close();
+      connectWebSocket(room, newName, false);
+    }
     await AsyncStorage.setItem("name", newName);
     setName(newName);
     setDialogVisible(false);
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1, padding: 20, justifyContent: "center", alignItems: "center" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#121212", paddingBlock: 50 }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         {/* Name ändern */}
         <TouchableOpacity onPress={changeName}>
-          <Text style={{ fontSize: 24, fontWeight: "bold" }}>{name}</Text>
+          <Text style={{ fontSize: 24, fontWeight: "bold", color: "#fff" }}>{name}</Text>
         </TouchableOpacity>
 
         <Dialog.Container visible={isDialogVisible}>
           <Dialog.Title>Name ändern</Dialog.Title>
-          <Dialog.Input style={{ color:"black" }} onChangeText={setNewName} value={newName} />
+          <Dialog.Input style={{ color: "black" }} onChangeText={setNewName} value={newName} />
           <Dialog.Button label="Abbrechen" onPress={() => setDialogVisible(false)} />
           <Dialog.Button label="Speichern" onPress={saveNewName} />
         </Dialog.Container>
 
         {room ? (
           <>
-            {/* Raumcode anzeigen */}
-            <Text style={{ fontSize: 18 }}>Raumcode: {room}</Text>
+            <Text style={{ fontSize: 18, color: "#bbb", marginVertical: 10 }}>Raumcode: {room}</Text>
 
             {/* Notfallbutton */}
-            <TouchableOpacity onPress={sendEmergency} style={{ backgroundColor: "red", padding: 15, marginTop: 20 }}>
-              <Text style={{ color: "white", fontSize: 20 }}>🚨 NOTFALL</Text>
+            <TouchableOpacity onPress={sendEmergency} style={{ backgroundColor: "#D32F2F", padding: 20, borderRadius: 10, marginVertical: 20 }}>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>🚨 NOTFALL</Text>
             </TouchableOpacity>
 
             {/* Mitgliederliste */}
             <FlatList
               data={members}
-              renderItem={({ item }) => <Text>{item}</Text>}
+              renderItem={({ item }) => <Text style={{ color: "#fff" }}>{item}</Text>}
               keyExtractor={(item, index) => index.toString()}
             />
 
-            {/* Raum verlassen */}
-            <Button title="Raum verlassen" onPress={leaveRoom} />
+            <Button title="Raum verlassen" onPress={leaveRoom} color="#FF9800" />
           </>
         ) : (
-            <>
-              {/* Raum erstellen */}
-              <Button title="Raum erstellen" onPress={createRoom} />
+          <>
+            <Button title="Raum erstellen" onPress={createRoom} color="#2196F3" />
 
-              {/* Raumcode eingeben */}
-              <TextInput
-                placeholder="Raumcode eingeben"
-                onChangeText={setRoomInput}
-                style={{
-                  borderBottomWidth: 1,
-                  marginVertical: 10,
-                  width: 200,
-                  color: "black",
-                }}
-                placeholderTextColor="gray"
-              />
+            <TextInput
+              placeholder="Raumcode eingeben"
+              onChangeText={setRoomInput}
+              style={{
+                borderBottomWidth: 1,
+                borderBottomColor: "#bbb",
+                marginVertical: 15,
+                width: 200,
+                color: "white",
+                textAlign: "center",
+              }}
+              placeholderTextColor="#888"
+            />
 
-              {/* Raum beitreten */}
-              <Button title="Raum beitreten" onPress={joinRoom} />
-            </>
-          )}
+            <Button title="Raum beitreten" onPress={joinRoom} color="#4CAF50" />
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
