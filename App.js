@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { SafeAreaView, View, Text, Button, TextInput, TouchableOpacity, FlatList, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Dialog from "react-native-dialog";
+import Modal from "react-native-modal";
+import AlertModal from "./components/AlertModal";
 
 // Zufälligen Namen generieren
 const generateRandomName = () => `user${Math.floor(10000 + Math.random() * 90000)}`;
@@ -14,6 +15,8 @@ const App = () => {
   const [ws, setWs] = useState(null);
   const [isDialogVisible, setDialogVisible] = useState(false);
   const [newName, setNewName] = useState(name);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: "", message: "" });
 
   // 📢 Push-Benachrichtigungen konfigurieren
   useEffect(() => {
@@ -33,6 +36,11 @@ const App = () => {
     loadStorage();
   }, []);
 
+  const showAlert = (title, message) => {
+    setAlertData({ title, message });
+    setAlertVisible(true);
+  };
+
   // 🔌 WebSocket-Verbindung aufbauen
   const connectWebSocket = (roomCode, userName, create) => {
     const socket = new WebSocket("ws://178.114.126.100:3000");
@@ -50,7 +58,7 @@ const App = () => {
       await AsyncStorage.removeItem("room");
       setRoom(null);
       console.log("❌ WebSocket-Fehler:", error);
-      Alert.alert("Verbindungsfehler", "Der Server ist nicht erreichbar!");
+      showAlert("Verbindungsfehler", "Der Server ist nicht erreichbar!");
     };
 
     socket.onclose = () => console.log("❌ Verbindung getrennt!");
@@ -60,7 +68,7 @@ const App = () => {
 
       if (data.type === "members") setMembers(data.members);
 
-      if (data.type === "alert") Alert.alert("Notfall!", data.message);
+      if (data.type === "alert") showAlert("Notfall!", data.message);
 
       if (data.type === "created") {
         setRoom(roomCode);
@@ -77,7 +85,7 @@ const App = () => {
       }
 
       if (data.type === "error") {
-        Alert.alert("Fehler", data.message);
+        showAlert("Fehler", data.message);
         setRoom(null);
         await AsyncStorage.removeItem("room");
       }
@@ -93,7 +101,7 @@ const App = () => {
   // 🔗 Raum beitreten
   const joinRoom = () => {
     if (!roomInput.trim() || roomInput.length !== 5 || isNaN(roomInput)) {
-      Alert.alert("Fehler", "Bitte einen gültigen Raumcode eingeben.");
+      showAlert("Fehler", "Bitte einen gültigen Raumcode eingeben.");
       return;
     }
 
@@ -111,7 +119,7 @@ const App = () => {
   // 🚨 Notfall senden
   const sendEmergency = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      Alert.alert("Fehler", "WebSocket nicht verbunden!");
+      showAlert("Fehler", "WebSocket nicht verbunden!");
       return;
     }
 
@@ -123,6 +131,10 @@ const App = () => {
 
   // 🔄 Neuen Namen speichern
   const saveNewName = async () => {
+    if (!newName.trim()) {
+      showAlert("Fehler", "Bitte einen Namen eingeben.");
+      return;
+    }
     if (ws) {
       ws.close();
       connectWebSocket(room, newName, false);
@@ -140,13 +152,32 @@ const App = () => {
           <Text style={{ fontSize: 24, fontWeight: "bold", color: "#fff" }}>{name}</Text>
         </TouchableOpacity>
 
-        <Dialog.Container visible={isDialogVisible}>
-          <Dialog.Title>Name ändern</Dialog.Title>
-          <Dialog.Input style={{ color: "black" }} onChangeText={setNewName} value={newName} />
-          <Dialog.Button label="Abbrechen" onPress={() => setDialogVisible(false)} />
-          <Dialog.Button label="Speichern" onPress={saveNewName} />
-        </Dialog.Container>
-
+        <Modal isVisible={isDialogVisible} backdropOpacity={0.5}>
+          <View style={{ backgroundColor: "#222", padding: 20, borderRadius: 10 }}>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Name ändern</Text>
+            <TextInput
+              style={{
+                color: "white",
+                borderBottomColor: "#666",
+                borderBottomWidth: 1,
+                marginBottom: 20,
+                fontSize: 16
+              }}
+              onChangeText={setNewName}
+              value={newName}
+              placeholder="Neuer Name"
+              placeholderTextColor="#888"
+            />
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <TouchableOpacity onPress={() => setDialogVisible(false)}>
+                <Text style={{ color: "#FF9800", fontSize: 16 }}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveNewName}>
+                <Text style={{ color: "#4CAF50", fontSize: 16 }}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         {room ? (
           <>
             <Text style={{ fontSize: 18, color: "#bbb", marginVertical: 10 }}>Raumcode: {room}</Text>
@@ -186,6 +217,7 @@ const App = () => {
             <Button title="Raum beitreten" onPress={joinRoom} color="#4CAF50" />
           </>
         )}
+        <AlertModal isVisible={alertVisible} title={alertData.title} message={alertData.message} onClose={() => setAlertVisible(false)} />
       </View>
     </SafeAreaView>
   );
