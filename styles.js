@@ -108,7 +108,7 @@ export default StyleSheet.create({
     position: "absolute",
     right: 10,
     top: "50%",
-    transform: [{ translateY: -11 }],
+    transform: [{ translateY: -13 }],
   },
   arrowText: {
     fontSize: 16,

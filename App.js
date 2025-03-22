@@ -71,6 +71,7 @@ const App = () => {
 
       if (data.type === "alert") {
         showAlert("Notfall!", data.message);
+        Vibration.vibrate(500);
       }
 
       if (data.type === "created") {
@@ -139,7 +140,7 @@ const App = () => {
       showAlert("Fehler", "Bitte einen Namen eingeben.");
       return;
     }
-    if (ws) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.close();
       connectWebSocket(room, newName, false);
     }
@@ -201,7 +202,11 @@ const App = () => {
                 style={styles.roomInput}
                 placeholderTextColor="#888"
                 keyboardType="numeric"
+                value={roomInput}
+                onSubmitEditing={() => joinRoom() }
+                returnKeyType="done"
               />
+
               {/* Pfeil-Button nur anzeigen, wenn `roomInput` nicht leer ist */}
               {roomInput.length === 5 && !isNaN(roomInput) && (
                 <TouchableOpacity onPress={joinRoom} style={styles.arrowButton}>
