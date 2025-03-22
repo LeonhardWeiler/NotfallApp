@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, View, Text, Button, TextInput, TouchableOpacity, FlatList, Alert } from "react-native";
+import { View, Text, Button, TextInput, TouchableOpacity, FlatList } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Modal from "react-native-modal";
 import AlertModal from "./components/AlertModal";
@@ -145,81 +145,114 @@ const App = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#121212", paddingBlock: 50 }}>
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        {/* Name ändern */}
-        <TouchableOpacity onPress={changeName}>
-          <Text style={{ fontSize: 24, fontWeight: "bold", color: "#fff" }}>{name}</Text>
-        </TouchableOpacity>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#121212", paddingVertical: 50 }}>
+      {/* Name ändern */}
+      <AlertModal isVisible={alertVisible} title={alertData.title} message={alertData.message} onClose={() => setAlertVisible(false)} />
+      <TouchableOpacity
+        onPress={changeName}
+        style={{
+          position: "absolute",
+          top: '8%',
+          left: 0,
+          right: 0,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 15 }}>
+          {name}
+        </Text>
+      </TouchableOpacity>
 
-        <Modal isVisible={isDialogVisible} backdropOpacity={0.5}>
-          <View style={{ backgroundColor: "#222", padding: 20, borderRadius: 10 }}>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Name ändern</Text>
-            <TextInput
-              style={{
-                color: "white",
-                borderBottomColor: "#666",
-                borderBottomWidth: 1,
-                marginBottom: 20,
-                fontSize: 16
-              }}
-              onChangeText={setNewName}
-              value={newName}
-              placeholder="Neuer Name"
-              placeholderTextColor="#888"
+      <Modal isVisible={isDialogVisible} backdropOpacity={0.5}>
+        <View style={{ backgroundColor: "#222", padding: 20, borderRadius: 10 }}>
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Name ändern</Text>
+          <TextInput
+            style={{
+              color: "white",
+              borderBottomColor: "#666",
+              borderBottomWidth: 1,
+              marginBottom: 20,
+              fontSize: 16
+            }}
+            onChangeText={setNewName}
+            value={newName}
+            placeholder="Neuer Name"
+            placeholderTextColor="#888"
+          />
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <TouchableOpacity onPress={() => setDialogVisible(false)}>
+              <Text style={{ color: "#FF9800", fontSize: 16 }}>Abbrechen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={saveNewName}>
+              <Text style={{ color: "#4CAF50", fontSize: 16 }}>Speichern</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {room ? (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ fontSize: 18, color: "#bbb" }}>Raumcode: {room}</Text>
+
+          {/* Notfallbutton */}
+          <TouchableOpacity
+            onPress={sendEmergency}
+            style={{ backgroundColor: "#D32F2F", padding: 20, borderRadius: 10, marginVertical: 20 }}
+          >
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>🚨 NOTFALL</Text>
+          </TouchableOpacity>
+
+          {/* Mitgliederliste */}
+          <View style={{ maxHeight: 200, width: "80%" }}>
+            <FlatList
+              data={members}
+              renderItem={({ item }) => <Text style={{ color: "#fff", textAlign: "center" }}>{item}</Text>}
+              keyExtractor={(item, index) => index.toString()}
             />
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <TouchableOpacity onPress={() => setDialogVisible(false)}>
-                <Text style={{ color: "#FF9800", fontSize: 16 }}>Abbrechen</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveNewName}>
-                <Text style={{ color: "#4CAF50", fontSize: 16 }}>Speichern</Text>
+          </View>
+
+          <View style={{ position: "absolute", bottom: '0', width: "100%", alignItems: "center" }}>
+            <Button title="Raum verlassen" onPress={leaveRoom} color="#FF9800" />
+          </View>
+        </View>
+      ) : (
+          <View style={{ alignItems: "center", marginTop: 20 }}>
+            <Button title="Raum erstellen" onPress={createRoom} color="#2196F3" />
+
+            {/* Input mit Pfeil */}
+            <View style={{ position: "relative", width: "60%", marginVertical: 20 }}>
+              <TextInput
+                placeholder="Raumcode eingeben"
+                onChangeText={setRoomInput}
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#888",
+                  borderRadius: 5,
+                  paddingVertical: 10,
+                  paddingLeft: 10,
+                  paddingRight: 40, // Platz für den Pfeil
+                  color: "white",
+                  minWidth: "100%",
+                  keyboardType: "numeric"
+                }}
+                placeholderTextColor="#888"
+              />
+
+              {/* Pfeil-Button */}
+              <TouchableOpacity
+                onPress={joinRoom}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: [{ translateY: -11 }],
+                }}
+              >
+                <Text style={{ fontSize: 16, color: "#4CAF50" }}>➜</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-        {room ? (
-          <>
-            <Text style={{ fontSize: 18, color: "#bbb", marginVertical: 10 }}>Raumcode: {room}</Text>
-
-            {/* Notfallbutton */}
-            <TouchableOpacity onPress={sendEmergency} style={{ backgroundColor: "#D32F2F", padding: 20, borderRadius: 10, marginVertical: 20 }}>
-              <Text style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>🚨 NOTFALL</Text>
-            </TouchableOpacity>
-
-            {/* Mitgliederliste */}
-            <FlatList
-              data={members}
-              renderItem={({ item }) => <Text style={{ color: "#fff" }}>{item}</Text>}
-              keyExtractor={(item, index) => index.toString()}
-            />
-
-            <Button title="Raum verlassen" onPress={leaveRoom} color="#FF9800" />
-          </>
-        ) : (
-          <>
-            <Button title="Raum erstellen" onPress={createRoom} color="#2196F3" />
-
-            <TextInput
-              placeholder="Raumcode eingeben"
-              onChangeText={setRoomInput}
-              style={{
-                borderBottomWidth: 1,
-                borderBottomColor: "#bbb",
-                marginVertical: 15,
-                width: 200,
-                color: "white",
-                textAlign: "center",
-              }}
-              placeholderTextColor="#888"
-            />
-
-            <Button title="Raum beitreten" onPress={joinRoom} color="#4CAF50" />
-          </>
         )}
-        <AlertModal isVisible={alertVisible} title={alertData.title} message={alertData.message} onClose={() => setAlertVisible(false)} />
-      </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
