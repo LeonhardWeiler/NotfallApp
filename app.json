@@ -30,10 +30,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.leonhardw.NotfallApp",
-      "permissions": [
-        "NOTIFICATIONS"
-      ]
+      "package": "com.leonhardw.NotfallApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
