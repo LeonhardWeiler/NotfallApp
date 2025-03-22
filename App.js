@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { View, Text, Button, TextInput, TouchableOpacity, FlatList, Vibration } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Modal from "react-native-modal";
+import { StatusBar } from 'expo-status-bar';
 import AlertModal from "./components/AlertModal";
 import styles from "./styles"; // Import der Styles
 
@@ -152,6 +153,7 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" backgroundColor="#121212" />
       {/* Name ändern */}
       <AlertModal isVisible={alertVisible} title={alertData.title} message={alertData.message} onClose={() => setAlertVisible(false)} />
       <TouchableOpacity onPress={changeName} style={styles.nameButton}>
