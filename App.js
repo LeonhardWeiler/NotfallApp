@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { View, Text, Button, TextInput, TouchableOpacity, FlatList, Vibration } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Modal from "react-native-modal";
@@ -9,11 +9,11 @@ import styles from "./styles"; // Import der Styles
 const generateRandomName = () => `user${Math.floor(10000 + Math.random() * 90000)}`;
 
 const App = () => {
+  const wsRef = useRef(null);
   const [name, setName] = useState("");
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
   const [roomInput, setRoomInput] = useState("");
-  const [ws, setWs] = useState(null);
   const [isDialogVisible, setDialogVisible] = useState(false);
   const [newName, setNewName] = useState(name);
   const [alertVisible, setAlertVisible] = useState(false);
@@ -45,13 +45,10 @@ const App = () => {
   // 🔌 WebSocket-Verbindung aufbauen
   const connectWebSocket = (roomCode, userName, create) => {
     const socket = new WebSocket("ws://178.114.126.100:3000");
+    wsRef.current = socket;
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({
-        type: create ? "create" : "join",
-        room: roomCode,
-        name: userName
-      }));
+      socket.send(JSON.stringify({ type: create ? "create" : "join", room: roomCode, name: userName }));
       console.log(`📡 WebSocket verbunden mit Raum: ${roomCode}`);
     };
 
@@ -62,7 +59,10 @@ const App = () => {
       showAlert("Verbindungsfehler", "Der Server ist nicht erreichbar!");
     };
 
-    socket.onclose = () => console.log("❌ Verbindung getrennt!");
+    socket.onclose = () => {
+      console.log("❌ Verbindung getrennt!");
+      wsRef.current = null;
+    };
 
     socket.onmessage = async (event) => {
       const data = JSON.parse(event.data);
@@ -74,18 +74,11 @@ const App = () => {
         Vibration.vibrate(500);
       }
 
-      if (data.type === "created") {
+      if (data.type === "created" || data.type === "joined") {
+        wsRef.current = socket;
         setRoom(roomCode);
-        setWs(socket);
         await AsyncStorage.setItem("room", roomCode);
-        console.log(`🏠 Raum erfolgreich erstellt: ${data.room}`);
-      }
-
-      if (data.type === "joined") {
-        setRoom(roomCode);
-        setWs(socket);
-        await AsyncStorage.setItem("room", roomCode);
-        console.log("✅ Erfolgreich beigetreten!");
+        console.log(data.type === "created" ? `🏠 Raum erstellt: ${data.room}` : "✅ Erfolgreich beigetreten!");
       }
 
       if (data.type === "error") {
@@ -117,18 +110,23 @@ const App = () => {
     AsyncStorage.removeItem("room");
     setRoom(null);
     setMembers([]);
-    ws && ws.close();
+
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     roomInput && setRoomInput("");
   };
 
   // 🚨 Notfall senden
   const sendEmergency = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
+    if (!wsRef.current) {
       showAlert("Fehler", "WebSocket nicht verbunden!");
       return;
     }
 
-    ws.send(JSON.stringify({ type: "emergency", room, name }));
+    wsRef.current.send(JSON.stringify({ type: "emergency", room, name }));
   };
 
   // ✏️ Name ändern
@@ -140,10 +138,13 @@ const App = () => {
       showAlert("Fehler", "Bitte einen Namen eingeben.");
       return;
     }
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.close();
+
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
       connectWebSocket(room, newName, false);
     }
+
     await AsyncStorage.setItem("name", newName);
     setName(newName);
     setDialogVisible(false);
