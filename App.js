@@ -24,30 +24,32 @@ const App = () => {
 
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Neuer Zustand
 
-useEffect(() => {
-  const loadStorage = async () => {
-    try {
-      const storedRoom = await AsyncStorage.getItem("room");
-      const storedName = await AsyncStorage.getItem("name");
-      const storedRooms = JSON.parse(await AsyncStorage.getItem("rooms")) || [];
+  useEffect(() => {
+    const loadStorage = async () => {
+      try {
+        const storedRoom = await AsyncStorage.getItem("room");
+        const storedName = await AsyncStorage.getItem("name");
+        const storedRooms = JSON.parse(await AsyncStorage.getItem("rooms")) || [];
 
-      const generatedName = generateRandomName();
-      setRooms(storedRooms);
-      setRoom(storedRoom);
-      setName(storedName || generatedName);
-      setNewName(storedName || generatedName);
-    } catch (error) {
-      console.error("Fehler beim Laden von AsyncStorage:", error);
-    }
-  };
+        const generatedName = generateRandomName();
+        setRooms(storedRooms);
+        setRoom(storedRoom);
+        setName(storedName || generatedName);
+        setNewName(storedName || generatedName);
+      } catch (error) {
+        console.error("Fehler beim Laden von AsyncStorage:", error);
+      }
+    };
 
-  loadStorage();
-}, []);
+    loadStorage();
+  }, []);
 
   useEffect(() => {
     if (isInitialLoad && room && name) {
+      if (wsRef.current) {
+        wsRef.current.close(); // Vorherige Verbindung schließen
+      }
       connectWebSocket(room, name, false);
-      setIsInitialLoad(false);
     }
   }, [room, name, isInitialLoad]);
 
@@ -62,6 +64,7 @@ useEffect(() => {
 
     socket.onopen = () => {
       wsRef.current = socket;
+      setIsInitialLoad(false);
       socket.send(JSON.stringify({ type: create ? "create" : "join", room: roomCode, name: userName }));
       console.log(`📡 WebSocket verbunden mit Raum: ${roomCode}`);
     };
