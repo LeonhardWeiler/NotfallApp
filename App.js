@@ -22,7 +22,8 @@ const App = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertData, setAlertData] = useState({ title: "", message: "" });
 
-  // 📢 Push-Benachrichtigungen konfigurieren
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Neuer Zustand
+
   useEffect(() => {
     const loadStorage = async () => {
       const storedRoom = await AsyncStorage.getItem("room");
@@ -33,14 +34,17 @@ const App = () => {
       setRoom(storedRoom);
       setName(storedName || generateRandomName());
       setNewName(storedName || generateRandomName());
-
-      await AsyncStorage.setItem("rooms", JSON.stringify(updatedRooms));
-
-      if (storedName && storedRoom) connectWebSocket(storedRoom, storedName, false);
     };
 
     loadStorage();
   }, []);
+
+  useEffect(() => {
+    if (isInitialLoad && room && name) {
+      connectWebSocket(room, name, false);
+      setIsInitialLoad(false);
+    }
+  }, [room, name, isInitialLoad]);
 
   const showAlert = (title, message) => {
     setAlertData({ title, message });
@@ -50,9 +54,9 @@ const App = () => {
   // 🔌 WebSocket-Verbindung aufbauen
   const connectWebSocket = (roomCode, userName, create) => {
     const socket = new WebSocket("ws://178.114.126.100:3000");
-    wsRef.current = socket;
 
     socket.onopen = () => {
+      wsRef.current = socket;
       socket.send(JSON.stringify({ type: create ? "create" : "join", room: roomCode, name: userName }));
       console.log(`📡 WebSocket verbunden mit Raum: ${roomCode}`);
     };
@@ -133,7 +137,6 @@ const App = () => {
 
   // 🚨 Notfall senden
   const sendEmergency = () => {
-    console.log('wsRef.current', wsRef.current);
     if (!wsRef.current) {
       showAlert("Fehler", "WebSocket nicht verbunden!");
       return;
@@ -154,8 +157,7 @@ const App = () => {
 
     if (wsRef.current) {
       wsRef.current.close();
-      // wsRef.current = null;
-      console.log(room, newName);
+      wsRef.current = null;
       connectWebSocket(room, newName, false);
     }
 
