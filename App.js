@@ -24,20 +24,25 @@ const App = () => {
 
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Neuer Zustand
 
-  useEffect(() => {
-    const loadStorage = async () => {
+useEffect(() => {
+  const loadStorage = async () => {
+    try {
       const storedRoom = await AsyncStorage.getItem("room");
       const storedName = await AsyncStorage.getItem("name");
-      const storedRooms = JSON.parse(await AsyncStorage.getItem("rooms"));
+      const storedRooms = JSON.parse(await AsyncStorage.getItem("rooms")) || [];
 
+      const generatedName = generateRandomName();
       setRooms(storedRooms);
       setRoom(storedRoom);
-      setName(storedName || generateRandomName());
-      setNewName(storedName || generateRandomName());
-    };
+      setName(storedName || generatedName);
+      setNewName(storedName || generatedName);
+    } catch (error) {
+      console.error("Fehler beim Laden von AsyncStorage:", error);
+    }
+  };
 
-    loadStorage();
-  }, []);
+  loadStorage();
+}, []);
 
   useEffect(() => {
     if (isInitialLoad && room && name) {
@@ -131,8 +136,12 @@ const App = () => {
   };
 
   const updateRoomsStorage = async (updatedRooms) => {
-    setRooms(updatedRooms);
-    await AsyncStorage.setItem("rooms", JSON.stringify(updatedRooms));
+    try {
+      await AsyncStorage.setItem("rooms", JSON.stringify(updatedRooms));
+      setRooms(updatedRooms);
+    } catch (error) {
+      console.error("Fehler beim Speichern der Räume:", error);
+    }
   };
 
   // 🚨 Notfall senden
@@ -155,14 +164,19 @@ const App = () => {
       return;
     }
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-      connectWebSocket(room, newName, false);
+    try {
+      await AsyncStorage.setItem("name", newName);
+      setName(newName);
+
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
+      (room && name) && connectWebSocket(room, newName, false);
+    } catch (error) {
+      console.error("Fehler beim Speichern des Namens:", error);
     }
 
-    await AsyncStorage.setItem("name", newName);
-    setName(newName);
     setDialogVisible(false);
   };
 
@@ -251,7 +265,7 @@ const App = () => {
                     </TouchableOpacity>
                   </View>
                 )}
-                keyExtractor={(item, index) => index.toString()}
+                keyExtractor={(item) => item.toString()}
                 contentContainerStyle={styles.roomsFlatList}
               />
             </View>
