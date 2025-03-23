@@ -5,6 +5,7 @@ import Modal from "react-native-modal";
 import { StatusBar } from 'expo-status-bar';
 import AlertModal from "./components/AlertModal";
 import styles from "./styles";
+// import TrashIcon from "./components/TrashIcon";
 
 // Zufälligen Namen generieren
 const generateRandomName = () => `user${Math.floor(10000 + Math.random() * 90000)}`;
