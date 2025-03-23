@@ -4,13 +4,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Modal from "react-native-modal";
 import { StatusBar } from 'expo-status-bar';
 import AlertModal from "./components/AlertModal";
-import styles from "./styles"; // Import der Styles
+import styles from "./styles";
 
 // Zufälligen Namen generieren
 const generateRandomName = () => `user${Math.floor(10000 + Math.random() * 90000)}`;
 
 const App = () => {
   const wsRef = useRef(null);
+
+  const [rooms, setRooms] = useState([]);
   const [name, setName] = useState("");
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
@@ -25,14 +27,16 @@ const App = () => {
     const loadStorage = async () => {
       const storedRoom = await AsyncStorage.getItem("room");
       const storedName = await AsyncStorage.getItem("name");
+      const storedRooms = JSON.parse(await AsyncStorage.getItem("rooms"));
+
+      setRooms(storedRooms);
       setRoom(storedRoom);
+      setName(storedName || generateRandomName());
+      setNewName(storedName || generateRandomName());
 
-      (storedName && storedRoom) && connectWebSocket(storedRoom, storedName, false);
+      await AsyncStorage.setItem("rooms", JSON.stringify(updatedRooms));
 
-      let finalName = storedName || generateRandomName();
-      await AsyncStorage.setItem("name", finalName);
-      setName(finalName);
-      setNewName(finalName)
+      if (storedName && storedRoom) connectWebSocket(storedRoom, storedName, false);
     };
 
     loadStorage();
@@ -76,10 +80,12 @@ const App = () => {
       }
 
       if (data.type === "created" || data.type === "joined") {
-        wsRef.current = socket;
+        if (!rooms.includes(roomCode)) {
+          const updatedRooms = [...rooms, roomCode];
+          updateRoomsStorage(updatedRooms);
+        }
         setRoom(roomCode);
         await AsyncStorage.setItem("room", roomCode);
-        console.log(data.type === "created" ? `🏠 Raum erstellt: ${data.room}` : "✅ Erfolgreich beigetreten!");
       }
 
       if (data.type === "error") {
@@ -120,8 +126,14 @@ const App = () => {
     roomInput && setRoomInput("");
   };
 
+  const updateRoomsStorage = async (updatedRooms) => {
+    setRooms(updatedRooms);
+    await AsyncStorage.setItem("rooms", JSON.stringify(updatedRooms));
+  };
+
   // 🚨 Notfall senden
   const sendEmergency = () => {
+    console.log('wsRef.current', wsRef.current);
     if (!wsRef.current) {
       showAlert("Fehler", "WebSocket nicht verbunden!");
       return;
@@ -142,13 +154,19 @@ const App = () => {
 
     if (wsRef.current) {
       wsRef.current.close();
-      wsRef.current = null;
+      // wsRef.current = null;
+      console.log(room, newName);
       connectWebSocket(room, newName, false);
     }
 
     await AsyncStorage.setItem("name", newName);
     setName(newName);
     setDialogVisible(false);
+  };
+
+  const removeRoom = async (roomCode) => {
+    const updatedRooms = rooms.filter((r) => r !== roomCode);
+    updateRoomsStorage(updatedRooms);
   };
 
   return (
@@ -216,6 +234,24 @@ const App = () => {
                   <Text style={styles.arrowText}>➜</Text>
                 </TouchableOpacity>
               )}
+            </View>
+
+            <View style={styles.roomsList}>
+              <FlatList
+                data={rooms}
+                renderItem={({ item }) => (
+                  <View style={styles.roomsRow}>
+                    <TouchableOpacity onPress={() => connectWebSocket(item, name, false)}>
+                      <Text style={styles.roomsText}>{item}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removeRoom(item)}>
+                      <Text style={styles.roomsText}>X</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                keyExtractor={(item, index) => index.toString()}
+                contentContainerStyle={styles.roomsFlatList}
+              />
             </View>
           </View>
         )}

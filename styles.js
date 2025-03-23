@@ -114,5 +114,25 @@ export default StyleSheet.create({
     fontSize: 16,
     color: "#4CAF50",
   },
+  roomsList: {
+    maxHeight: 200,
+    width: "80%",
+    overflow: "hidden",
+  },
+  roomsText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  roomsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    width: "80%",
+  },
+  roomsFlatList: {
+    alignItems: "center",
+  },
 });
 
